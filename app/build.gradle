@@ -2,6 +2,8 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 apply plugin: 'kotlin-kapt'
+apply plugin: "org.sonarqube"
+apply plugin: 'jacoco'
 apply plugin: 'com.github.ben-manes.versions'   // ./gradlew dependencyUpdates -Drevision=release
 apply plugin: 'com.squareup.sqldelight'
 //apply from: 'quality.gradle'
@@ -35,9 +37,34 @@ sqldelight {
         packageName = "com.github.pockethub.android"
     }
 }
+sonarqube {
+  properties {
+    property "sonar.projectKey", "Ganesh-manoharan_android-code-coverage"
+    property "sonar.organization", "ganesh-manoharan"
+    property "sonar.host.url", "https://sonarcloud.io"
+    property "sonar.login", "153ad4b23ae8b35fca422d7a1c4080ceeeb8e2f5"
+    property "sonar.java.binaries", "*"
+    property "sonar.java.source", "7"
+    property "sonar.jacoco.reportPath","app/build/jacoco/testDebugUnitTest.exec"
+    property "sonar.branch", "master"
+    property "sonar.exclusions", "**/*Generated.java"
+    property "sonar.binaries", "build/classes"
+  }
+}
+
 
 android {
+    testOptions {
+        unitTests.all {
+            jacoco {
+                includeNoLocationClasses = true
+                excludes = ['jdk.internal.*']
+            }
+        }
+    }
+
     compileSdkVersion 28
+
 
     defaultConfig {
         applicationId 'com.github.pockethub.android'
@@ -160,6 +187,31 @@ androidExtensions {
 
 kapt {
     correctErrorTypes = true
+}
+task createTestReport(type: JacocoReport, dependsOn: ['testDevDebugUnitTest']) {
+    group = "Reporting"
+
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+
+    def fileFilter = ['**/R.class',
+                      '**/R$*.class',
+                      '**/BuildConfig.*',
+                      '**/*$ViewInjector*.*',
+                      '**/*$ViewBinder*.*',
+                      '**/*$MembersInjector*.*',
+                      '**/Manifest*.*',
+                      '**/*Test*.*',
+                      'android/**/*.*']
+    def debugTree = fileTree(dir: "${buildDir}/intermediates/classes/dev/debug", excludes: fileFilter)
+    def mainSrc = "${project.projectDir}/src/main/java"
+
+    sourceDirectories.from = files([mainSrc])
+    classDirectories.from = files([debugTree])
+    executionData.from = files("${project.buildDir}/jacoco/testDevDebugUnitTest.exec")
+}
 }
 
 dependencies {
